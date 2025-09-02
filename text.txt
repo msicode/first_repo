@@ -1,0 +1,7 @@
+RAG (Retrieval-Augmented Generation) is an AI framework that combines the strengths of traditional information retrieval systems (such as search and databases)
+with the capabilities of generative large language models (LLMs)
+
+An LLM (Large Language Model) is a type of AI that generates human-like text by learning patterns from vast amounts of data. 
+RAG (Retrieval-Augmented Generation) is an AI architecture that enhances an LLM by combining it with an external knowledge source, 
+such as a database or web page
+
