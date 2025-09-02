@@ -5,3 +5,24 @@ An LLM (Large Language Model) is a type of AI that generates human-like text by 
 RAG (Retrieval-Augmented Generation) is an AI architecture that enhances an LLM by combining it with an external knowledge source, 
 such as a database or web page
 
+Why Fine-Tune an LLM?
+1.Domain Adaptation
+2.Task-Specific Performance: Improve performance for tasks like summarization, classification, or question answering
+3.Style Customization: Make the model write in a particular tone or follow specific brand guidelines
+4.Reduce Hallucination: By focusing on curated data, fine-tuning can improve reliability in niche areas
+
+Types of Fine-Tuning?
+1.Full Fine-Tuning:
+  The entire model is retrained on your dataset.
+  Requires large computational resources and huge datasets.
+  Rarely used with massive LLMs due to cost
+2.Parameter-Efficient Fine-Tuning (PEFT)
+  Only a subset of parameters is updated.
+  Methods include:
+  LoRA (Low-Rank Adaptation)
+  Adapters
+  Prefix Tuning
+  Much cheaper and widely used
+3.Instruction Fine-Tuning
+  Trains the model to follow specific instructions more effectively.
+  Example: Teaching the model to always answer in a step-by-step manner
