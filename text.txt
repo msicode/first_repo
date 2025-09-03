@@ -26,3 +26,338 @@ Types of Fine-Tuning?
 3.Instruction Fine-Tuning
   Trains the model to follow specific instructions more effectively.
   Example: Teaching the model to always answer in a step-by-step manner
+
+
+
+""" 
+Its a document loader and in this we got many types of loader to load documents like :
+Web loader ,Directory Loader , PyPDF loader and etc. 
+
+"""
+from langchain_community.document_loaders import PyPDFLoader
+
+""" 
+This is a text splitter and we got many text splitter in langchian but most of people use this and you can manually also splits text 
+on your on.
+"""
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+"""
+Here I am loading LLM for text generation. Langchain support Openai ,claud, and other paid LLM loader.
+
+Its also support huggingface and Ollama where we can get open source LLM model and we can use them but it some time doest work 
+code for hugging face : from langchain_huggingface import HuggingFaceEndpoint
+
+"""
+
+from langchain_openai import ChatOpenAI
+
+"""
+This help in execessing the Embedding model which convert the text into number.
+
+Here also we got two option like Closed source embedding model and open source embedding model from langchain.
+Code for closed source embeddings : from langchain_openai import OpenAIEmbeddings
+
+
+"""
+
+from langchain_huggingface import HuggingFaceEmbeddings
+
+"""
+This is the Vector database and its open source and there are various other Vector supported databases like
+ Chroma,Pinecone,Waivate but among these some are paid and some are free . 
+
+ You can also use you local database like postgresql its also provide vector storage
+"""
+
+from langchain_community.vectorstores import FAISS
+
+
+
+path = r'' # Put here pdf path 
+query = '' # put your question related to PDF.
+key = ''  # Here put you OPEN_AI API KEY
+
+loader = PyPDFLoader(path) # Here we initialize the Loader 
+pdf = loader.load() # Here we load the pdf using loader 
+
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=400,chunk_overlap=50) # Here we are loading Text splitter 
+# we gave some parameter here like : what should be the chunk size and its overlap 
+
+chunks = text_splitter.split_documents(pdf) # Here we split the docs and we have to provide which doc we have to split 
+# split_documents object is for Documents only 
+# text = text_splitter.split_text()    : we can use this for raw text 
+
+embeddding_model = HuggingFaceEmbeddings(model_name = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
+# sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2  : This is best and light weight embedding model to run fast 
+# you can experiment with other embedding model to get better result or desirable result.
+#Here we load the embedding model only 
+
+vector = FAISS.from_documents(chunks,embeddding_model) # Here this FAISS will create the vector using chunks and embedding model 
+# Usually two parameter are enough here and those : 
+# Document ( here its chunks ) & Embedding ( measn model which will convert the provide chunks into vectors)
+
+retriever = vector.as_retriever(k=5) 
+# Here we craeted the retriever as FAISS provide inbuilt retriver and k means how much maximum similar document it return if possible
+
+retrieved_documents = retriever.get_relevant_documents(query)
+#This will initialize the retriever and we have to put query in this 
+# You can also write this like this langchain get updated :
+# get_retrieved_documents = retriever.invoke(query)
+# See here we are manualyy retrieveing document so we will get th Doucment which will content :
+# page_content,metadata,tittle and etc. But for our use we only need page_content.
+
+data_list = [doc.page_content for doc in retrieved_documents] # we are fetching the page_content from retrieved documents 
+# but its in list so to get better context we have to make a single paragarph for LLM 
+
+data = '. '.join(data_list)
+# Here we join the list as a sentnence
+
+llm = ChatOpenAI(model='gpt-4o-mini',api_key = key)
+# we are using the gpt-4o-mini which is light model but its best for starting
+
+main_question = f' context : {data} \n Question : {query}'
+# Here we are puting retrived documents and query in tuple because in LLM we can Pass Only one input
+# You can also use Prompts to give better context to llm 
+
+
+answer = llm(main_question)
+# You can get you answer
+
+
+
+
+import logging 
+import os 
+from dotenv import load_dotenv
+from langchain_community.document_loaders import WebBaseLoader
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import FAISS
+from langchain.retrievers.document_compressors import LLMChainExtractor
+from langchain.retrievers import ContextualCompressionRetriever
+from langchain_openai import ChatOpenAI
+from langchain_community.cross_encoders import HuggingFaceCrossEncoder
+from langchain.schema.document import Document
+from langchain.prompts import PromptTemplate
+
+load_dotenv()
+
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s -- %(levelname)s -- %(message)s')
+
+logger = logging.getLogger(_name_)
+
+try:
+    OPENAI_API_KEY = os.getenv('OPENAI_KEY')
+    EMBEDDING_MODEL = os.getenv('EMBEDDING_MODEL')
+    OPENAI_MODEL = os.getenv('OPENAI_MODEL')
+    WEB_VECTORSTORE_PATH = '2nd_day_sep_2_25/external_db/web_db'
+    LOCAL_VECTORSTORE_PATH = '2nd_day_sep_2_25/external_db/local_db'
+    CROSS_ENCODER = os.getenv('CROSS_ENCODER')
+
+    logger.info(f' --> LOADING THE CREDENTIALS')
+except Exception as e:
+    logger.exception(f' --> CREDENTIAL EXCEPTION : {e}')
+
+
+RAG_INFO = {
+    'CHUNKS_SIZE':600,
+    'CHUNKS_OVERLAP':50,
+    'SEPARATORS':['\n\n'],
+    'RELEVANT_THRESHOLD':0.65,
+    'IRREVALANT_THRESHOLD':0.35
+}
+
+compressor_template = """
+You are research evaluator.You will get provided two paragraphs.
+--> 1st Paragraph : This content most of Relevant information regading to question.
+--> 2nd Paragraph : This is Ambiguous paragarph and its has mix of relevant,ambignous and irreleavnt information regarding to question.
+From the given context , extract only relavant text which is simantically,contextually relevant to question.
+--> Remove the ambiguous and Irrelevant text from context.
+--> Remove heading,citations and page numbers.
+--> Return the answer in single detailed summarized paragraph.
+
+Question : {question}
+Context : {context}
+
+Refined Text :
+
+"""
+
+class Indexer:
+    def _init_(self,embedding_model_name = EMBEDDING_MODEL,chunks_size = RAG_INFO['CHUNKS_SIZE'],chunks_overlap=RAG_INFO['CHUNKS_OVERLAP']
+                 ,separators = RAG_INFO['SEPARATORS'],web_vector_path = WEB_VECTORSTORE_PATH,local_vector_path = LOCAL_VECTORSTORE_PATH):
+        self.embedding_model_name = embedding_model_name
+        self.embedding_model = HuggingFaceEmbeddings(model_name = self.embedding_model_name)
+        self.chunks_size = chunks_size 
+        self.chunks_overlap = chunks_overlap
+        self.separators = separators
+        self.web_vector_path = web_vector_path
+        self.local_vector_path = local_vector_path
+        self.vector_path = None
+
+
+        logger.info(f' --> INITIALIZING INDEXER')
+    
+    def load_doc(self,path):
+        try:
+            if path.startswith('https://') or path.startswith('http://'):
+                
+                    loader = WebBaseLoader(web_path=path)
+                    self.vector_path = self.web_vector_path
+                    logger.info(f' -->WEB DOCUMENTS ARE LOADED')
+                    return loader.load()
+            elif path.endswith('.pdf'):
+                
+                    loader = PyPDFLoader(path)
+                    self.vector_path = self.local_vector_path
+                    logger.info(f' -->PDF DOCUMENTS ARE LOADED')
+                    return loader.load()
+            
+        except Exception as e:
+            raise FileNotFoundError(f' Please enter valid path. Path Not found')
+
+    def get_chunks(self,docs):
+        try:
+            text_splitter = RecursiveCharacterTextSplitter(chunk_size = self.chunks_size,chunk_overlap=self.chunks_overlap)
+            chunks = text_splitter.split_documents(docs)
+            logger.info('--> CHUNKS ARE CREATED')
+            return chunks
+        except Exception as e:
+            logger.exception(f' --> CHUNKS EXCEPTION : {e}')
+
+    def make_vectors(self,chunks):
+        try:
+            vectors = FAISS.from_documents(chunks,self.embedding_model)
+            logger.info(f' --> VECTOR ARE CREATED')
+            return vectors
+        except Exception as e:
+            logger.exception(f' --> VECTORS EXCEPTION :{e}')
+
+    def save_vectors(self,vectors):
+        try:
+            vectors.save_local(self.vector_path)
+            logger.info(f' --> VECTOR ARE STORED :{self.vector_path}')
+            return self.vector_path
+            
+        except Exception as e:
+            logger.exception(f' -->VECTOR STORE EXCEPTION :{e}')
+
+
+
+class Retriever:
+    def _init_(self,embedding_model_name = EMBEDDING_MODEL,open_ai = OPENAI_MODEL,key=OPENAI_API_KEY,template = compressor_template):
+        self.embedding_model_name = embedding_model_name
+        self.embedding_model = HuggingFaceEmbeddings(model_name = self.embedding_model_name)
+        self.key=key
+        self.open_ai = open_ai
+        self.chatgpt_ai = ChatOpenAI(model=self.open_ai,api_key=self.key,max_completion_tokens=1000)
+        self.template = template
+        self.prompt_template = PromptTemplate(input_variables=['context','question'],template=self.template)
+        self.compressor = LLMChainExtractor.from_llm(self.chatgpt_ai,prompt=self.prompt_template)
+
+        logger.info(f' --> INITIALIZING RETRIEVER')
+
+    
+    def get_base_retriever(self,vector_path):
+        try:
+            vectors = FAISS.load_local(vector_path,self.embedding_model,allow_dangerous_deserialization=True)
+            base_retriever = vectors.as_retriever(k=5)
+            logger.info(f' -->BASE RETRIEVER IS LOADED')
+            return base_retriever
+        except Exception as e:
+            logger.exception(f' --> Base Retriever Exception : {e}')
+    
+    def use_base_retriever(self,base_retriever,query):
+        try:
+            retriever = base_retriever.invoke(query)
+            logger.info(f' --> USING THE BASE RETRIEVER')
+            return retriever
+        except Exception as e:
+            logger.exception(f' --> BASE RETRIEVER LOADING EXCEPTION : {e}')
+
+    def get_contextual_retriever(self,base_retriever):
+        try:
+
+            CCR = ContextualCompressionRetriever(base_retriever=base_retriever,
+                                                 base_compressor=self.compressor)
+            logger.info(f' --> Context Retriever IS LOADED')
+            
+            return CCR
+        except Exception as e:
+            logger.exception(f' --> Context Retriever Exception : {e}')
+
+
+class Generator:
+    def _init_(self,key = OPENAI_API_KEY,openai_model = OPENAI_MODEL):
+        self.key =key
+        self.openai_model = openai_model
+        self.chatgpt = ChatOpenAI(api_key=self.key,model=self.openai_model,max_completion_tokens=600)
+        logger.info(f' --> INITIALIZING GENERATOR')
+
+    def get_llm(self):
+        try:
+            llm = self.chatgpt
+            return llm 
+        except Exception as e:
+            logger.exception(f' --> LLM EXCEPTION : {e}')
+
+class Corrective:
+    def _init_(self,encoder = CROSS_ENCODER,relevant_score = RAG_INFO['RELEVANT_THRESHOLD'],irrelevant_score=RAG_INFO['IRREVALANT_THRESHOLD']):
+        self.ecoder = CROSS_ENCODER
+        self.cross_encoder = HuggingFaceCrossEncoder(model_name = self.ecoder)
+        self.relevant_score= relevant_score
+        self.irrelevant_score = irrelevant_score
+
+    def get_evaluator(self,docs,query):
+        try:
+            get_relevant = []
+            get_ambiguous = []
+
+            for doc in docs:
+                doc_score = self.cross_encoder.score((query,doc.page_content))
+                if doc_score >=self.relevant_score:
+                    get_relevant.append(doc.page_content)
+                elif self.relevant_score < doc_score >=self.irrelevant_score:
+                    get_ambiguous.append(doc.page_content)
+
+            logger.info(f' --> THERE ARE TOTAL {len(docs)} RETRIEVED : {len(get_relevant)} RELEVANT DOCS & {len(get_ambiguous)} IRRELEVANT DOCS')
+            return (get_relevant,get_ambiguous)
+        except Exception as e:
+            logger.exception(f' --> EVALUATOR EXECPTION : {e}')
+    
+    def do_decompos_recompos(self):
+        try: 
+            rel = '. '.join(base_retriever[0])
+            amb = '. '.join(base_retriever[1])
+            data = '\n\n'.join([rel,amb])
+
+
+indexer = Indexer()
+retriever = Retriever()
+generator = Generator()
+corrective = Corrective()
+Query = 'What is AI and AI Models ?'
+
+doc = indexer.load_doc(r"https://www.geeksforgeeks.org/artificial-intelligence/what-is-artificial-intelligence-ai/")
+chunks =indexer.get_chunks(doc)
+vectors = indexer.make_vectors(chunks)
+vector_path = indexer.vector_path(vectors)
+
+base_retriever = retriever.get_base_retriever(vector_path)
+retrieved_docs = retriever.use_base_retriever(base_retriever,Query)
+
+data = corrective.get_evaluator(retrieved_docs,Query)
+
+retriever.get_contextual_retriever()
+
+
+
+"""
+FLOW OF THIS PIPELINE :
+
+INDEXER ---> RETRIEVER ( ONLY BASE RETRIEVER ) ---> CORRECTIVE ( EVALUATOR ) ---> RETRIEVER ( CONTEXTUAL RETRIEVER) ---> LLM
+
+"""
