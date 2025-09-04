@@ -379,7 +379,7 @@ PDF ----> AWS S3
                                                                                                       |                       |
                                                                                                       |                       |
                                                                                                       ^                       |
-                                                           User Query ---> Query Embedding ---> Segment Query --------- Pages+User Query ------ BRAIN --->> FINAL OUTPUT
+                                                           User Query ---> Query Embedding ---> Segment Query --------- Pages+User Query ------ BRAIN(LLM) --->> FINAL OUTPUT
 
 
 
