@@ -360,4 +360,47 @@ FLOW OF THIS PIPELINE :
 
 INDEXER ---> RETRIEVER ( ONLY BASE RETRIEVER ) ---> CORRECTIVE ( EVALUATOR ) ---> RETRIEVER ( CONTEXTUAL RETRIEVER) ---> LLM
 
-"""
+
+Why we need blockchain??
+user query --> semantic search (1.keywords 2.understanding meaning ) --> Pdf stored in database --> { resuly like matchinf keyword pages 326 or 510 + user query } --> Brain(content aware text generator) 
+embedding(embedding is set of numbers)
+
+PDF ----> AWS S3
+            |
+            |    1. pg1 (chunkds could be one word one page or one paragraph in pdf ot etc)  ----Embedding1 (embedding meand turning chunks into number of set to get accurate get affected query result))
+           PDF   2. pg2  ------------------------------------------------------------------------Embedding2
+                   .. ---------------------------------------------------------------------------''
+                 1000. pg1k ---------------------------------------------------------------------Embedding1k
+                                                                                                      |
+                                                                                                      |
+                                                                                                      |
+                                                                                                      .
+                                                                                                  Database --------------------
+                                                                                                      |                       |
+                                                                                                      |                       |
+                                                                                                      ^                       |
+                                                           User Query ---> Query Embedding ---> Segment Query --------- Pages+User Query ------ BRAIN --->> FINAL OUTPUT
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
