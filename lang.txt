@@ -1,0 +1,9 @@
+langchain is an open source framework that helps to build LLm based application. it provides modular components and end-to-end helps developers builds complex ai application,
+such a chatbots ,question answering sytems, retrieval augmented generation (RAG), automonous agents, and more.
+
+1.support all major LLM
+2.simplifies dveloping LLM based application 
+3.Integrations availabale for alll major tools
+4.open source/free/actively developed 
+5.support all major Genai use cases
+
